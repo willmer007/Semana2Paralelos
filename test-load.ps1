@@ -27,7 +27,7 @@ for ($i = 1; $i -le $NUM_REQUESTS; $i++) {
 # Esperamos a que todos los jobs terminen
 $jobs | Wait-Job
 
-Write-Host "`nResultados de cada peticion:`n"
+Write-Host "`nResultados de cada peticion`n"
 foreach ($j in $jobs) {
   Receive-Job $j | Write-Host
 }
