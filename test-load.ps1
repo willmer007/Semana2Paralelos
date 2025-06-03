@@ -4,22 +4,21 @@ param(
 )
 
 $baseUrl = "http://localhost:5001/api/facturar"
-
 Write-Host "`nIniciando prueba de carga con $NUM_REQUESTS requests (complejidad=$COMPLEXITY)...`n"
 
 $jobs = @()
 for ($i = 1; $i -le $NUM_REQUESTS; $i++) {
-  # Preparamos el JSON del body
+  # Construimos el body en JSON
   $bodyObj = @{
     deviceId = "DEVICE_$i"
     payload  = @{ complexity = $COMPLEXITY }
   }
   $bodyJson = $bodyObj | ConvertTo-Json
 
-  # Iniciamos un job que haga curl en background
+  # En lugar de 'curl', llamamos explícitamente a 'curl.exe'
   $jobs += Start-Job -ScriptBlock {
     param($url, $jsonBody)
-    curl -s -X POST $url `
+    curl.exe -s -X POST $url `
       -H "Content-Type: application/json" `
       -d $jsonBody
   } -ArgumentList $baseUrl, $bodyJson
@@ -28,7 +27,7 @@ for ($i = 1; $i -le $NUM_REQUESTS; $i++) {
 # Esperamos a que todos los jobs terminen
 $jobs | Wait-Job
 
-Write-Host "`nResultados de cada petición:`n"
+Write-Host "`nResultados de cada peticion:`n"
 foreach ($j in $jobs) {
   Receive-Job $j | Write-Host
 }
