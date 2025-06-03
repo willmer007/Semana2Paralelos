@@ -1,0 +1,12 @@
+# Dockerfile del servicio-notificador
+FROM node:18-alpine
+
+WORKDIR /usr/src/app
+
+COPY package.json ./
+RUN npm install --production
+
+COPY index.js ./
+
+EXPOSE 5003
+CMD ["npm", "start"]

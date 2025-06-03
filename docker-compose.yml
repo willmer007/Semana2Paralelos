@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # 1) API Gateway
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "5001:5001"
+    depends_on:
+      - nginx-loadbalancer
+
+  # 2) NGINX Load Balancer
+  nginx-loadbalancer:
+    build: ./nginx
+    container_name: nginx-loadbalancer
+    ports:
+      - "8080:80"
+    depends_on:
+      - servicio-procesador-1
+      - servicio-procesador-2
+      - servicio-procesador-3
+
+  # 3a) Servicio procesador - réplica 1
+  servicio-procesador-1:
+    build: ./servicio-procesador
+    container_name: servicio-procesador-1
+    environment:
+      - NOTIFICADOR_URL=http://servicio-notificador:5003
+    expose:
+      - "5002"
+
+  # 3b) Servicio procesador - réplica 2
+  servicio-procesador-2:
+    build: ./servicio-procesador
+    container_name: servicio-procesador-2
+    environment:
+      - NOTIFICADOR_URL=http://servicio-notificador:5003
+    expose:
+      - "5002"
+
+  # 3c) Servicio procesador - réplica 3
+  servicio-procesador-3:
+    build: ./servicio-procesador
+    container_name: servicio-procesador-3
+    environment:
+      - NOTIFICADOR_URL=http://servicio-notificador:5003
+    expose:
+      - "5002"
+
+  # 4) Servicio notificador
+  servicio-notificador:
+    build: ./servicio-notificador
+    container_name: servicio-notificador
+    expose:
+      - "5003"
