@@ -69,7 +69,7 @@ app.post('/procesar', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servicio-procesador escuchando en puerto ${PORT}`);
 });
-*/
+
 // servicio-procesador/index.js
 const express = require('express');
 const { Worker } = require('worker_threads');
@@ -168,3 +168,92 @@ app.post('/procesar', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`[Procesador] escuchando en puerto ${PORT}`);
 });
+*/
+// servicio-procesador/index.js
+
+const express = require('express');
+const { Worker } = require('worker_threads');
+const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+
+const app = express();
+const PORT = 5002;
+
+// MIDDLEWARE que solo parsea JSON si es POST a /procesar
+function onlyJsonBody(req, res, next) {
+  if (req.method === 'POST' && req.path === '/procesar') {
+    const contentType = req.headers['content-type'] || '';
+    if (contentType.includes('application/json')) {
+      return express.json()(req, res, next);
+    } else {
+      return res.status(400).json({ error: 'Se esperaba Content-Type: application/json' });
+    }
+  }
+  next();
+}
+
+// MIDDLEWARE de captura de errores de JSON.parse
+function handleJsonError(err, req, res, next) {
+  if (
+    err instanceof SyntaxError &&
+    err.status === 400 &&
+    'body' in err
+  ) {
+    return res.status(400).json({ error: 'JSON inválido' });
+  }
+  next(err);
+}
+
+app.use(onlyJsonBody);
+app.use(handleJsonError);
+
+app.post('/procesar', async (req, res) => {
+  // Línea para imprimir en logs que llegó una petición válida:
+  console.log(`[Procesador] Recibida tarea: ${req.body.deviceId}`);
+
+  const { deviceId, payload } = req.body;
+  if (!deviceId || !payload || typeof payload.complexity !== 'number') {
+    return res.status(400).json({ error: 'Request mal formado' });
+  }
+
+  const complexity = payload.complexity;
+  const taskId = uuidv4();
+  const workersCount = 2;
+  const promises = [];
+
+  for (let i = 0; i < workersCount; i++) {
+    promises.push(
+      new Promise((resolve, reject) => {
+        const worker = new Worker('./worker.js', {
+          workerData: { workerIndex: i, complexity, taskId }
+        });
+        worker.on('message', resolve);
+        worker.on('error', reject);
+      })
+    );
+  }
+
+  let details;
+  try {
+    details = await Promise.all(promises);
+  } catch (errWorkers) {
+    return res.status(500).json({ error: 'Error en workers', message: errWorkers.message });
+  }
+
+  const message = `Tarea ${taskId} completada. Detalles: ${details.join(' | ')}`;
+  try {
+    await axios.post('http://servicio-notificador:5003/notify', {
+      deviceId,
+      message
+    });
+  } catch (errNotify) {
+    console.error('[Procesador] Error notificando:', errNotify.message);
+  }
+
+  return res.json({ status: 'OK', taskId, details });
+});
+
+app.listen(PORT, () => {
+  console.log(`[Procesador] escuchando en puerto ${PORT}`);
+});
+
