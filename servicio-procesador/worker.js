@@ -1,3 +1,4 @@
+/*
 // worker.js
 const { parentPort, workerData } = require('worker_threads');
 
@@ -15,3 +16,23 @@ function trabajoIntensivo(data) {
 // Ejecuta el trabajo y envía el resultado al hilo principal
 const resultado = trabajoIntensivo(workerData);
 parentPort.postMessage(resultado);
+*/
+// servicio-procesador/worker.js
+const { parentPort, workerData } = require('worker_threads');
+
+// Destructure
+const { workerIndex, complexity, taskId } = workerData;
+
+// Simular carga de CPU
+function heavyComputation(c) {
+  const iterations = Math.floor(c * 1e7);
+  let sum = 0;
+  for (let i = 0; i < iterations; i++) {
+    sum += i % 10;
+  }
+  return sum;
+}
+
+const result = heavyComputation(complexity);
+const message = `Worker ${workerIndex} de tarea ${taskId} result=${result}`;
+parentPort.postMessage(message);
